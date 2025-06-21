@@ -20,9 +20,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.monii.model.User;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -38,16 +41,38 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = extractToken(request);
+        String requestURI = request.getRequestURI();
 
-        if (token != null && jwtService.validateToken(token)) {
-            String email = jwtService.extractUsername(token);
-            User user = (User) userDetailsService.loadUserByUsername(email);
+        logger.debug("Procesando solicitud para: {}", requestURI);
 
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    user, null, user.getAuthorities());
+        if (token != null) {
+            try {
+                if (jwtService.validateToken(token)) {
+                    String email = jwtService.extractUsername(token);
+                    logger.debug("Token válido para usuario: {} en: {}", email, requestURI);
 
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // Verificar si ya hay autenticación en el contexto
+                    if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                        User user = (User) userDetailsService.loadUserByUsername(email);
+
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                user, null, user.getAuthorities());
+
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                        logger.debug("Autenticación establecida para usuario: {}", email);
+                    } else {
+                        logger.debug("Ya existe autenticación en el contexto");
+                    }
+                } else {
+                    logger.warn("Token inválido para solicitud: {}", requestURI);
+                }
+            } catch (Exception e) {
+                logger.error("Error al procesar token: {}", e.getMessage());
+                // No establecer autenticación si hay error
+            }
+        } else {
+            logger.debug("No se encontró token para solicitud: {}", requestURI);
         }
 
         filterChain.doFilter(request, response);

@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,6 +15,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.validation.FieldError;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -55,7 +57,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Puedes agregar más manejadores para excepciones específicas
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ApiResponse<Void> response = ApiResponse.error(
@@ -71,8 +72,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ApiResponse<Object> response = ApiResponse.error(
                 ex.getStatusCode(),
                 ex.getMessage(),
-                ex.getAdditionalData() // Suponiendo que tu BusinessException tiene este campo
+                ex.getAdditionalData()
         );
         return new ResponseEntity<>(response, status);
     }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        Map<String, String> errors = new HashMap<>();
+
+        // Verificar si es un error de conversión de enum
+        if (ex.getMessage().contains("CounterpartyType")) {
+            errors.put("type", "El tipo debe ser uno de los siguientes valores: PERSON, COMPANY, PLATFORM");
+        } else {
+            errors.put("error", "Formato de solicitud inválido. Verifique la sintaxis JSON y los tipos de datos.");
+        }
+
+        ApiResponse<Map<String, String>> response = ApiResponse.error(
+                HttpStatus.BAD_REQUEST.value(),
+                "Error en el formato de la solicitud",
+                errors
+        );
+
+        return new ResponseEntity<>(response, headers, HttpStatus.BAD_REQUEST);
+    }
+
 }

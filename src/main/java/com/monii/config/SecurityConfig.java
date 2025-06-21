@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
@@ -49,9 +50,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/api/auth/**").permitAll();
                     auth.requestMatchers("/api/norole/**").permitAll();
+                    auth.requestMatchers("/api/movements/**").authenticated();
 
                     auth.requestMatchers("/api/admin/**").access((authenticationSupplier, requestContext) -> {
-                        Authentication authentication = authenticationSupplier.get(); // Obtener Authentication real
+                        Authentication authentication = authenticationSupplier.get(); // Obtener Authentication
                         return new AuthorizationDecision(
                                 rolesEnabled && authentication != null && authentication.isAuthenticated() &&
                                         authentication.getAuthorities().stream()
@@ -60,7 +62,7 @@ public class SecurityConfig {
                     });
 
                     auth.requestMatchers("/api/users/**").access((authenticationSupplier, requestContext) -> {
-                        Authentication authentication = authenticationSupplier.get(); // Obtener Authentication real
+                        Authentication authentication = authenticationSupplier.get(); // Obtener Authentication
                         return new AuthorizationDecision(
                                 rolesEnabled && authentication != null && authentication.isAuthenticated() &&
                                         authentication.getAuthorities().stream()
@@ -77,32 +79,34 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedOrigins(List.of(frontendUrl));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*")); // Permitir todos los headers
+        configuration.setExposedHeaders(List.of("Authorization")); // Exponer headers si es necesario
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    // Mantener el CorsFilter como respaldo
+    @Bean
+    public CorsFilter corsFilter() {
+        return new CorsFilter(corsConfigurationSource());
+    }
+
+    @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public CorsFilter corsFilter() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of(frontendUrl)); // Permitir solo el frontend
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        source.registerCorsConfiguration("/**", config);
-        return new CorsFilter(source);
     }
 }

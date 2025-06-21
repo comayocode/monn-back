@@ -13,6 +13,9 @@ import java.util.function.Function;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class JwtService {
 
@@ -24,6 +27,8 @@ public class JwtService {
 
     @Value("${jwt.refreshExpiration}")
     private long refreshExpiration;
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     // Convierte el secretKey (String) en un Key válido
     private Key getSigningKey() {
@@ -74,19 +79,27 @@ public class JwtService {
                     .setSigningKey(getSigningKey()) // 🔹 Usa la clave convertida
                     .build()
                     .parseClaimsJws(token);
-            return true;
+            // Verificar explícitamente la expiración
+            Date expiration = extractClaim(token, Claims::getExpiration);
+            return expiration.after(new Date());
         } catch (Exception e) {
+            logger.warn("Error validando token: {}", e.getMessage());
             return false;
         }
     }
 
     public String extractUsername(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey()) // 🔹 Usa la clave convertida
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+        } catch (Exception e) {
+            logger.error("Error extrayendo username del token: {}", e.getMessage());
+            throw e;
+        }
     }
 
 
