@@ -1,8 +1,8 @@
 package com.monii.config;
 
-import com.monii.Exception.BusinessException;
-import com.monii.Exception.ResourceNotFoundException;
-import com.monii.dto.ApiResponse;
+import com.monii.core.exception.BusinessException;
+import com.monii.core.exception.ResourceNotFoundException;
+import com.monii.core.dto.ApiResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
