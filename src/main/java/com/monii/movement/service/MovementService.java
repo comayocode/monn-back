@@ -4,10 +4,7 @@ import com.monii.core.exception.BusinessException;
 import com.monii.core.exception.ResourceNotFoundException;
 import com.monii.counterparty.dto.response.CounterpartySummaryDto;
 import com.monii.counterparty.model.Counterparty;
-import com.monii.movement.dto.request.BasicMovementRequest;
-import com.monii.movement.dto.request.LoanDebtMovementRequest;
-import com.monii.movement.dto.request.MovementRequest;
-import com.monii.movement.dto.request.RecurrentMovementRequest;
+import com.monii.movement.dto.request.*;
 import com.monii.movement.model.*;
 import com.monii.counterparty.repository.CounterpartyRepository;
 import com.monii.movement.repository.MovementRepository;
@@ -372,4 +369,114 @@ public class MovementService {
         return new ArrayList<>(); // Por ahora devolver lista vacía
     }
 
+    // Actualiza un movimiento existente
+    @Transactional
+    public Movement updateMovement(Long movementId, MovementUpdateRequest request, User user) {
+        // Verificar que el movimiento existe y pertenece al usuario
+        Movement movement = movementRepository.findByIdAndUser(movementId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Movimiento no encontrado"));
+
+        // Actualizar campos comunes
+        if (request.getAmount() != null) {
+            movement.setAmount(request.getAmount());
+        }
+        if (request.getDescription() != null) {
+            movement.setDescription(request.getDescription());
+        }
+
+        // Actualizar campos específicos según el tipo de movimiento
+        switch (movement.getType()) {
+            case LOAN:
+                updateLoanMovement((LoanMovement) movement, request);
+                break;
+            case DEBT:
+                updateDebtMovement((DebtMovement) movement, request);
+                break;
+            case RECURRENT:
+                updateRecurrentMovement((RecurrentMovement) movement, request);
+                break;
+            case INCOME:
+            case EXPENSE:
+                // No hay campos adicionales para actualizar
+                break;
+        }
+
+        // Guardar y devolver el movimiento actualizado
+        return movementRepository.save(movement);
+    }
+
+    private void updateLoanMovement(LoanMovement movement, MovementUpdateRequest request) {
+        if (request instanceof LoanDebtMovementUpdateRequest) {
+            LoanDebtMovementUpdateRequest loanRequest = (LoanDebtMovementUpdateRequest) request;
+
+            if (loanRequest.getDueDate() != null) {
+                movement.setDueDate(loanRequest.getDueDate());
+            }
+            if (loanRequest.getStatus() != null) {
+                movement.setStatus(loanRequest.getStatus());
+            }
+            if (loanRequest.getRemainingAmount() != null) {
+                movement.setRemainingAmount(loanRequest.getRemainingAmount());
+            }
+            if (loanRequest.getIsPaid() != null) {
+                movement.setIsPaid(loanRequest.getIsPaid());
+            }
+            if (loanRequest.getCounterpartyId() != null) {
+                Counterparty counterparty = counterpartyRepository.findById(loanRequest.getCounterpartyId())
+                        .filter(c -> c.getOwner().getId().equals(movement.getUser().getId()))
+                        .orElseThrow(() -> new ResourceNotFoundException("Contacto no encontrado"));
+                movement.setCounterparty(counterparty);
+            }
+        }
+    }
+
+    private void updateDebtMovement(DebtMovement movement, MovementUpdateRequest request) {
+        if (request instanceof LoanDebtMovementUpdateRequest) {
+            LoanDebtMovementUpdateRequest debtRequest = (LoanDebtMovementUpdateRequest) request;
+
+            if (debtRequest.getDueDate() != null) {
+                movement.setDueDate(debtRequest.getDueDate());
+            }
+            if (debtRequest.getStatus() != null) {
+                movement.setStatus(debtRequest.getStatus());
+            }
+            if (debtRequest.getRemainingAmount() != null) {
+                movement.setRemainingAmount(debtRequest.getRemainingAmount());
+            }
+            if (debtRequest.getIsPaid() != null) {
+                movement.setIsPaid(debtRequest.getIsPaid());
+            }
+            if (debtRequest.getCounterpartyId() != null) {
+                Counterparty counterparty = counterpartyRepository.findById(debtRequest.getCounterpartyId())
+                        .filter(c -> c.getOwner().getId().equals(movement.getUser().getId()))
+                        .orElseThrow(() -> new ResourceNotFoundException("Contacto no encontrado"));
+                movement.setCounterparty(counterparty);
+            }
+        }
+    }
+
+    private void updateRecurrentMovement(RecurrentMovement movement, MovementUpdateRequest request) {
+        if (request instanceof RecurrentMovementUpdateRequest) {
+            RecurrentMovementUpdateRequest recurrentRequest = (RecurrentMovementUpdateRequest) request;
+
+            if (recurrentRequest.getFrequency() != null) {
+                movement.setFrequency(recurrentRequest.getFrequency());
+            }
+            if (recurrentRequest.getStartDate() != null) {
+                movement.setStartDate(recurrentRequest.getStartDate());
+            }
+            if (recurrentRequest.getEndDate() != null) {
+                movement.setEndDate(recurrentRequest.getEndDate());
+            }
+            if (recurrentRequest.getIsActive() != null) {
+                movement.setIsActive(recurrentRequest.getIsActive());
+            }
+            if (recurrentRequest.getCounterpartyId() != null) {
+                Counterparty counterparty = counterpartyRepository.findById(recurrentRequest.getCounterpartyId())
+                        .filter(c -> c.getOwner().getId().equals(movement.getUser().getId()))
+                        .orElseThrow(() -> new ResourceNotFoundException("Contacto no encontrado"));
+                movement.setCounterparty(counterparty);
+            }
+        }
+    }
 }

@@ -3,6 +3,7 @@ package com.monii.movement.controller;
 import com.monii.core.dto.ApiResponse;
 import com.monii.movement.dto.request.LoanDebtMovementRequest;
 import com.monii.movement.dto.request.MovementRequest;
+import com.monii.movement.dto.request.MovementUpdateRequest;
 import com.monii.movement.dto.request.RecurrentMovementRequest;
 import com.monii.movement.dto.response.DebtMovementResponse;
 import com.monii.movement.dto.response.LoanMovementResponse;
@@ -116,5 +117,18 @@ public class MovementController {
             case RECURRENT -> new RecurrentMovementResponse((RecurrentMovement) movement);
             default -> new MovementResponse(movement);
         };
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateMovement(
+            @PathVariable Long id,
+            @Valid @RequestBody MovementUpdateRequest request,
+            @AuthenticationPrincipal User user) {
+
+        Movement updatedMovement = movementService.updateMovement(id, request, user);
+        return ResponseEntity.ok(
+                ApiResponse.ok("Movimiento actualizado exitosamente", createResponseDto(updatedMovement))
+        );
     }
 }
