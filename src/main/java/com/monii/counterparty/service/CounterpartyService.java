@@ -5,6 +5,7 @@ import com.monii.core.exception.ResourceNotFoundException;
 import com.monii.counterparty.model.Counterparty;
 import com.monii.counterparty.model.CounterpartyType;
 import com.monii.counterparty.dto.response.CounterpartySummaryDto;
+import com.monii.counterparty.dto.response.CounterpartyDebtDto;
 import com.monii.movement.model.DebtMovement;
 import com.monii.movement.model.LoanMovement;
 import com.monii.movement.model.Movement;
@@ -167,5 +168,23 @@ public class CounterpartyService {
         }
 
         return counterpartyRepository.findByOwnerIdAndNameContainingIgnoreCase(owner.getId(), query);
+    }
+
+    // Obtiene contactos con deudas y sus montos
+    public List<CounterpartyDebtDto> getCounterpartiesWithDebtInfo(User owner) {
+        List<Object[]> results = movementRepository.findCounterpartiesWithDebtInfo(owner);
+        return results.stream()
+            .map(result -> {
+                Counterparty counterparty = (Counterparty) result[0];
+                BigDecimal totalAmount = (BigDecimal) result[1];
+                BigDecimal remainingAmount = (BigDecimal) result[2];
+
+                CounterpartyDebtDto dto = new CounterpartyDebtDto(counterparty);
+                dto.setTotalDebtAmount(totalAmount != null ? totalAmount : BigDecimal.ZERO);
+                dto.setRemainingDebtAmount(remainingAmount != null ? remainingAmount : BigDecimal.ZERO);
+
+                return dto;
+            })
+            .collect(Collectors.toList());
     }
 }

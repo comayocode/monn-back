@@ -4,6 +4,7 @@ import com.monii.core.dto.ApiResponse;
 import com.monii.counterparty.dto.request.CounterpartyRequest;
 import com.monii.counterparty.dto.response.CounterpartyResponse;
 import com.monii.counterparty.dto.response.CounterpartySummaryDto;
+import com.monii.counterparty.dto.response.CounterpartyDebtDto;
 import com.monii.counterparty.model.Counterparty;
 import com.monii.counterparty.model.CounterpartyType;
 import com.monii.movement.dto.response.DebtMovementResponse;
@@ -140,6 +141,17 @@ public class CounterpartyController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.ok("Búsqueda de contactos exitosa", responseList));
+    }
+
+    // Obtener contactos con deudas y sus montos (top deudas)
+    @GetMapping("/top-debt")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<CounterpartyDebtDto>>> getCounterpartiesWithDebtInfo(
+            @AuthenticationPrincipal User user) {
+
+        List<CounterpartyDebtDto> debtInfoList = counterpartyService.getCounterpartiesWithDebtInfo(user);
+
+        return ResponseEntity.ok(ApiResponse.ok("Contactos con información de deudas obtenidos exitosamente", debtInfoList));
     }
 
     // Actualizar un contacto existente

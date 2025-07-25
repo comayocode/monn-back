@@ -32,7 +32,7 @@ public interface CounterpartyRepository extends JpaRepository<Counterparty, Long
         List<Counterparty> findByOwnerIdAndType(@Param("ownerId") Long ownerId, @Param("type") CounterpartyType type);
 
     // Encuentra todos los movimientos asociados a un contacto específico
-    @Query("SELECT m FROM Movement m WHERE m.counterparty.id = :counterpartyId")
+    @Query(value = "SELECT * FROM movements WHERE counterparty_id = :counterpartyId", nativeQuery = true)
     List<Movement> findByCounterpartyId(@Param("counterpartyId") Long counterpartyId);
 
     // Encuentra préstamos de un usuario con un contacto específico
@@ -55,5 +55,12 @@ public interface CounterpartyRepository extends JpaRepository<Counterparty, Long
 
     List<Counterparty> findByOwnerIdAndNameContainingIgnoreCase(Long ownerId, String query);
 
+    // Encuentra contactos ordenados por monto de deuda (de mayor a menor)
+    @Query("SELECT m.counterparty, SUM(m.amount) as totalDebt " +
+            "FROM DebtMovement m " +
+            "WHERE m.user = :user " +
+            "GROUP BY m.counterparty " +
+            "ORDER BY totalDebt DESC")
+    List<Object[]> findCounterpartiesWithDebtOrderedDesc(@Param("user") User user);
 
 }

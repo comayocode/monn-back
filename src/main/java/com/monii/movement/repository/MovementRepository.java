@@ -128,4 +128,11 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
         @Query("SELECT d FROM DebtMovement d WHERE d.user = :user AND d.status = :status")
         List<DebtMovement> findDebtsByUserAndStatus(@Param("user") User user, @Param("status") MovementStatus status);
 
+        // Encuentra contactos con deudas y sus montos totales y restantes
+        @Query("SELECT d.counterparty, SUM(d.amount) as totalAmount, SUM(d.RemainingAmount) as remainingAmount " +
+               "FROM DebtMovement d " +
+               "WHERE d.user = :user " +
+               "GROUP BY d.counterparty " +
+               "ORDER BY remainingAmount DESC")
+        List<Object[]> findCounterpartiesWithDebtInfo(@Param("user") User user);
 }
